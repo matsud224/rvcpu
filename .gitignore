@@ -1,0 +1,7 @@
+riscv-tests/
+tests-tmp/
+rom.txt
+rvcpu_tb
+rvcpu_tb.vcd
+*.bin
+*.elf
