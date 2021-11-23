@@ -5,7 +5,7 @@ module imem(
   input [31:0] addr,
   output reg [31:0] q
 );
-  reg [31:0] rom[0:4096-1];
+  reg [31:0] rom[0:16384-1];
 
   always @(posedge clk) begin
     q <= rom[addr];
@@ -152,8 +152,8 @@ module rvcpu(
             `FUNCT_BNE: if (rs1_q != rs2_q) pc <= pc_rel;
             `FUNCT_BLT: if (rs1_q < rs2_q) pc <= pc_rel;
             `FUNCT_BLTU: if ($unsigned(rs1_q) < $unsigned(rs2_q)) pc <= pc_rel;
-            `FUNCT_BGE: if (rs1_q > rs2_q) pc <= pc_rel;
-            `FUNCT_BGEU: if ($unsigned(rs1_q) > $unsigned(rs2_q)) pc <= pc_rel;
+            `FUNCT_BGE: if (rs1_q >= rs2_q) pc <= pc_rel;
+            `FUNCT_BGEU: if ($unsigned(rs1_q) >= $unsigned(rs2_q)) pc <= pc_rel;
           endcase
         else if (opcode == `OPC_MISC_MEM)
           regs[0] <= 0;  // pass
