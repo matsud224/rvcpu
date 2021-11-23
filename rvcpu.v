@@ -92,7 +92,7 @@ module rvcpu(
 
   reg signed [31:0] pc;
 
-  wire halted = (state == `STATE_HALT);
+  assign halted = (state == `STATE_HALT);
 
   integer i;
   wire signed [31:0] pc_rel  = pc + imm;
@@ -103,12 +103,13 @@ module rvcpu(
   assign dmem_addr = (state == `STATE_EXEC && (opcode == `OPC_LOAD || opcode == `OPC_STORE)) ? {rs1_rel[31:2], 2'b00} : 32'b0;
 
   reg [31:0] dmem_d;
+  assign dmem_d = wr_data;
   always @(*) begin
     case (funct3)
-      `FUNCT_SB: dmem_d = rs2_q[7:0] << {rs1_rel[1:0], 3'b0};
-      `FUNCT_SH: dmem_d = rs2_q[15:0] << {rs1_rel[1], 4'b0};
-      `FUNCT_SW: dmem_d = rs2_q;
-      default:   dmem_d = 32'bx;
+      `FUNCT_SB: wr_data = rs2_q[7:0] << {rs1_rel[1:0], 3'b0};
+      `FUNCT_SH: wr_data = rs2_q[15:0] << {rs1_rel[1], 4'b0};
+      `FUNCT_SW: wr_data = rs2_q;
+      default:   wr_data = 32'bx;
     endcase
   end
 
