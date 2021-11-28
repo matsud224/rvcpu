@@ -6,3 +6,4 @@ rvcpu_tb
 rvcpu_tb.vcd
 *.bin
 *.elf
+*.mif
