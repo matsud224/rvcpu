@@ -2,7 +2,7 @@
 
 set -eu
 
-CFLAGS="-ffreestanding -nostartfiles -T link.ld -march=rv32im -mno-div"
+CFLAGS="-ffreestanding -nostartfiles -T link.ld -march=rv32im -mabi=ilp32 -mno-div"
 
 SRC=$1
 
