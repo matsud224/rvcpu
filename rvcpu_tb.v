@@ -27,7 +27,7 @@ module rvcpu_tb;
     wait(halted);
     if (top.cpu0.regs[10] !== 0) begin
       // check x10 for riscv-tests
-      $display("failed! x10=%d, pc=%x", top.cpu0.regs[10], top.cpu0.pc);
+      $display("failed!");
     end
     $finish;
   end
