@@ -1,6 +1,7 @@
 riscv-tests/
 tests-tmp/
-rom.txt
+imem.txt
+dmem.txt
 rvcpu_tb
 rvcpu_tb.vcd
 *.bin

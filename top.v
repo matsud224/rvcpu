@@ -3,14 +3,14 @@ module imem(
   input [31:0] addr,
   output reg [31:0] q
 );
-  reg [31:0] rom[0:16384-1];
+  reg [31:0] rom[0:8192-1];
 
   always @(posedge clk) begin
     q <= rom[addr];
   end
 
   initial begin
-    $readmemh("rom.txt", rom);
+    $readmemh("imem.txt", rom);
   end
 endmodule
 
@@ -26,18 +26,25 @@ module dmem(
 
   reg [7:0] d0, d1, d2, d3;
 
+  wire is_dmem_addr = (addr[31:23] == 9'b1);
+  wire [31:0] paddr = {9'b0, addr[22:0]};
+
   always @(*) begin
-    d0 = we[0] ? d[7:0] : ram[addr][7:0];
-    d1 = we[1] ? d[15:8] : ram[addr][15:8];
-    d2 = we[2] ? d[23:16] : ram[addr][23:16];
-    d3 = we[3] ? d[31:24] : ram[addr][31:24];
+    d0 = we[0] ? d[7:0] : ram[paddr][7:0];
+    d1 = we[1] ? d[15:8] : ram[paddr][15:8];
+    d2 = we[2] ? d[23:16] : ram[paddr][23:16];
+    d3 = we[3] ? d[31:24] : ram[paddr][31:24];
   end
 
   always @(posedge clk) begin
-    if (en) begin
-      ram[addr] <= {d3, d2, d1, d0};
-      q <= {d3, d2, d1, d0};
+    if (en && is_dmem_addr) begin
+      ram[paddr] <= {d3, d2, d1, d0};
+      q <= ram[paddr];
     end
+  end
+
+  initial begin
+    $readmemh("dmem.txt", ram);
   end
 endmodule
 

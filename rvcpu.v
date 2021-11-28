@@ -134,10 +134,10 @@ module rvcpu(
     case (funct3)
       `FUNCT_SB:
         case (alu_out[1:0])
-          0: wr_data = {24'b0, alu_out[7:0]};
-          1: wr_data = {16'b0, alu_out[7:0], 8'b0};
-          2: wr_data = {8'b0, alu_out[7:0], 16'b0};
-          3: wr_data = {alu_out[7:0], 24'b0};
+          0: wr_data = {24'b0, rs2_q[7:0]};
+          1: wr_data = {16'b0, rs2_q[7:0], 8'b0};
+          2: wr_data = {8'b0, rs2_q[7:0], 16'b0};
+          3: wr_data = {rs2_q[7:0], 24'b0};
         endcase
       `FUNCT_SH: wr_data = alu_out[1] ? {rs2_q[15:0], 16'b0} : rs2_q;
       `FUNCT_SW: wr_data = rs2_q;
@@ -313,7 +313,7 @@ module rvcpu(
         else if (opcode == `OPC_BRANCH) begin
           pc <= alu_out ? pc_adder_out : pc_next;
         end
-        else if (opcode == `OPC_LOAD || opcode == `OPC_STORE || opcode == `OPC_MISC_MEM) begin
+        else if (opcode == `OPC_MISC_MEM) begin
           pc <= pc_next;
         end
         else if (opcode == `OPC_SYSTEM) begin
@@ -322,6 +322,7 @@ module rvcpu(
       end
       else if (state == `STATE_MEM) begin
         state <= `STATE_IF;
+        pc <= pc_next;
         if (opcode == `OPC_LOAD)
           regs[rd] <= dmem_q_ext;
       end
