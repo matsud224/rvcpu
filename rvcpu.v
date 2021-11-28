@@ -1,43 +1,13 @@
 `include "defs.v"
 
-module imem(
+module divider(
   input clk,
-  input [31:0] addr,
-  output reg [31:0] q
+  input rst_n,
+  input [31:0] opr_1,
+  input [31:0] opr_2,
+  output [31:0] out
 );
-  reg [31:0] rom[0:16384-1];
 
-  always @(posedge clk) begin
-    q <= rom[addr];
-  end
-
-  initial begin
-    $readmemh("rom.txt", rom);
-  end
-endmodule
-
-module dmem(
-  input clk,
-  input [31:0] addr,
-  input [31:0] d,
-  input [3:0] we,
-  output reg [31:0] q
-);
-  reg [31:0] ram[0:4096-1];
-
-  reg [7:0] d0, d1, d2, d3;
-
-  always @(*) begin
-    d0 = we[0] ? d[7:0] : ram[addr][7:0];
-    d1 = we[1] ? d[15:8] : ram[addr][15:8];
-    d2 = we[2] ? d[23:16] : ram[addr][23:16];
-    d3 = we[3] ? d[31:24] : ram[addr][31:24];
-  end
-
-  always @(posedge clk) begin
-    ram[addr] <= {d3, d2, d1, d0};
-    q <= {d3, d2, d1, d0};
-  end
 endmodule
 
 module rvcpu(
@@ -45,12 +15,33 @@ module rvcpu(
   input rst_n,
   output [31:0] imem_addr,
   input [31:0] imem_q,
+  output dmem_en,
   output [31:0] dmem_addr,
   output [31:0] dmem_d,
   output [3:0] dmem_we,
   input [31:0] dmem_q,
   output halted
 );
+  `define ALU_ADD 0
+  `define ALU_AND 1
+  `define ALU_OR  2
+  `define ALU_XOR 3
+  `define ALU_SLL 4
+  `define ALU_SRL 5
+  `define ALU_SRA 6
+  `define ALU_CMPLT 7
+  `define ALU_CMPLTU 9
+  `define ALU_CMPEQ 10
+
+  `define MULT_UU 0
+  `define MULT_SS 1
+  `define MULT_SU 2
+
+  `define STATE_IF    2'h0
+  `define STATE_EXEC  2'h1
+  `define STATE_MEM   2'h2
+  `define STATE_HALT  2'h3
+
   // --- decoder
   wire [31:0] inst = imem_q;
   wire [6:0] opcode = inst[6:0];
@@ -59,7 +50,8 @@ module rvcpu(
   wire [4:0] rs1 = inst[19:15];
   wire [4:0] rs2 = inst[24:20];
   wire [6:0] funct7 = inst[31:25];
-  reg signed [31:0] imm;
+  reg [31:0] imm;
+  wire [4:0] shamt = imm[4:0];
 
   wire is_mem_stage_required = (opcode == `OPC_LOAD || opcode == `OPC_STORE);
 
@@ -78,36 +70,76 @@ module rvcpu(
       imm = 32'bx;
   end
 
-  // --- state machine
-  `define STATE_IF    3'h0
-  `define STATE_EXEC  3'h1
-  `define STATE_MEM   3'h2
-  `define STATE_HALT  3'h3
-
-  reg [2:0] state;
-
-  reg signed [31:0] regs[0:31];
-  wire signed [31:0] rs1_q = (rs1 == 0) ? 0 : regs[rs1];
-  wire signed [31:0] rs2_q = (rs2 == 0) ? 0 : regs[rs2];
-
-  reg signed [31:0] pc;
-
+  reg [1:0] state;
   assign halted = (state == `STATE_HALT);
 
-  integer i;
-  wire signed [31:0] pc_rel  = pc + imm;
-  wire signed [31:0] rs1_rel  = rs1_q + imm;
-  wire [4:0] shamt = imm[4:0];
+  reg [31:0] regs[0:31];
+  wire [31:0] rs1_q = (rs1 == 0) ? 32'b0 : regs[rs1];
+  wire [31:0] rs2_q = (rs2 == 0) ? 32'b0 : regs[rs2];
+
+  reg [31:0] pc;
+  wire [31:0] pc_next = pc + 32'h4;
+  reg signed [31:0] pc_adder_base;
+  reg signed [31:0] pc_adder_offset;
+  wire [31:0] pc_adder_out = pc_adder_base + pc_adder_offset;
+
+  // --- alu
+  reg [3:0] alu_op;
+  reg signed [31:0] alu_opr1;
+  reg signed [31:0] alu_opr2;
+  reg signed [31:0] alu_out0;
+  wire alu_inv = (opcode == `OPC_BRANCH) && funct3[0];
+  wire signed [31:0] alu_out = alu_inv ? !alu_out0 : alu_out0;
+
+  always @(*) begin
+    case (alu_op)
+      `ALU_ADD:    alu_out0 = alu_opr1 + alu_opr2;
+      `ALU_AND:    alu_out0 = alu_opr1 & alu_opr2;
+      `ALU_OR:     alu_out0 = alu_opr1 | alu_opr2;
+      `ALU_XOR:    alu_out0 = alu_opr1 ^ alu_opr2;
+      `ALU_SLL:    alu_out0 = alu_opr1 << alu_opr2[4:0];
+      `ALU_SRL:    alu_out0 = alu_opr1 >> alu_opr2[4:0];
+      `ALU_SRA:    alu_out0 = alu_opr1 >>> alu_opr2[4:0];
+      `ALU_CMPLT:  alu_out0 = alu_opr1 < alu_opr2;
+      `ALU_CMPLTU: alu_out0 = $unsigned(alu_opr1) < $unsigned(alu_opr2);
+      `ALU_CMPEQ:  alu_out0 = alu_opr1 == alu_opr2;
+      default:     alu_out0 = 32'bx;
+  	endcase
+  end
+
+  // --- multiplier
+  reg [1:0] mult_op;
+  reg signed [31:0] mult_opr1;
+  reg signed [31:0] mult_opr2;
+  reg signed [63:0] mult_out0;
+  wire mult_hi = (funct3 == 3'b0);
+  wire signed [63:0] mult_out = mult_hi ? mult_out0[63:32] : mult_out0[31:0];
+
+  always @(*) begin
+    case (mult_op)
+      `MULT_SS: mult_out0 = mult_opr1 * mult_opr2;
+      `MULT_UU: mult_out0 = $unsigned(mult_opr1) * $unsigned(mult_opr2);
+      `MULT_SU: mult_out0 = mult_opr1 * {1'b0, mult_opr2};
+      default:  mult_out0 = 64'bx;
+    endcase
+  end
 
   assign imem_addr = pc;
-  assign dmem_addr = (state == `STATE_EXEC && (opcode == `OPC_LOAD || opcode == `OPC_STORE)) ? {rs1_rel[31:2], 2'b00} : 32'b0;
+  assign dmem_en = (state == `STATE_EXEC) && (opcode == `OPC_LOAD || opcode == `OPC_STORE);
+  assign dmem_addr = {alu_out[31:2], 2'b00};
 
-  reg [31:0] dmem_d;
+  reg [31:0] wr_data;
   assign dmem_d = wr_data;
   always @(*) begin
     case (funct3)
-      `FUNCT_SB: wr_data = rs2_q[7:0] << {rs1_rel[1:0], 3'b0};
-      `FUNCT_SH: wr_data = rs2_q[15:0] << {rs1_rel[1], 4'b0};
+      `FUNCT_SB:
+        case (alu_out[1:0])
+          0: wr_data = {24'b0, alu_out[7:0]};
+          1: wr_data = {16'b0, alu_out[7:0], 8'b0};
+          2: wr_data = {8'b0, alu_out[7:0], 16'b0};
+          3: wr_data = {alu_out[7:0], 24'b0};
+        endcase
+      `FUNCT_SH: wr_data = alu_out[1] ? {rs2_q[15:0], 16'b0} : rs2_q;
       `FUNCT_SW: wr_data = rs2_q;
       default:   wr_data = 32'bx;
     endcase
@@ -117,19 +149,153 @@ module rvcpu(
   assign dmem_we = (state == `STATE_EXEC && opcode == `OPC_STORE) ? we_byte : 4'b0;
   always @(*) begin
     case (funct3)
-      `FUNCT_SB: we_byte = 4'b1 << rs1_rel[1:0];
-      `FUNCT_SH: we_byte = rs1_rel[1] ? 4'b1100 : 4'b0011;
+      `FUNCT_SB: we_byte = 4'b0001 << alu_out[1:0];
+      `FUNCT_SH: we_byte = alu_out[1] ? 4'b1100 : 4'b0011;
       `FUNCT_SW: we_byte = 4'b1111;
       default:   we_byte = 4'bx;
     endcase
   end
 
+  always @(*) begin
+    pc_adder_base = 32'bx;
+    pc_adder_offset = 32'bx;
+    alu_opr1 = 32'bx;
+    alu_opr2 = 32'bx;
+    alu_op = 4'bx;
+    mult_opr1 = 64'bx;
+    mult_opr2 = 64'bx;
+    mult_op = 2'bx;
+    if (opcode == `OPC_OP_IMM) begin
+      alu_opr1 = rs1_q;
+      alu_opr2 = imm;
+      case (funct3)
+        `FUNCT_ADDI: alu_op = `ALU_ADD;
+        `FUNCT_SLTI: alu_op = `ALU_CMPLT;
+        `FUNCT_SLTIU: alu_op = `ALU_CMPLTU;
+        `FUNCT_ANDI: alu_op = `ALU_AND;
+        `FUNCT_ORI: alu_op = `ALU_OR;
+        `FUNCT_XORI: alu_op = `ALU_XOR;
+        `FUNCT_SLLI: alu_op = `ALU_SLL;
+        `FUNCT_SRLI_SRAI: alu_op = imm[10] ? `ALU_SRA : `ALU_SRL;
+        default: alu_op = 4'bx;
+      endcase
+    end
+    else if (opcode == `OPC_LUI) begin
+      alu_opr1 = 32'b0;
+      alu_opr2 = imm;
+      alu_op = `ALU_ADD;
+    end
+    else if (opcode == `OPC_AUIPC) begin
+      alu_opr1 = pc;
+      alu_opr2 = imm;
+      alu_op = `ALU_ADD;
+    end
+    else if (opcode == `OPC_OP) begin
+      if (funct7 == `FUNCT_INTEGER) begin
+        alu_opr1 = rs1_q;
+        alu_opr2 = rs2_q;
+        case (funct3)
+          `FUNCT_ADD_SUB: begin
+            alu_op = `ALU_ADD;
+            if (funct7[5]) alu_opr2 = -rs2_q;
+          end
+          `FUNCT_SLT: alu_op = `ALU_CMPLT;
+          `FUNCT_SLTU: alu_op = `ALU_CMPLTU;
+          `FUNCT_AND: alu_op = `ALU_AND;
+          `FUNCT_OR: alu_op = `ALU_OR;
+          `FUNCT_XOR: alu_op = `ALU_XOR;
+          `FUNCT_SLL: alu_op = `ALU_SLL;
+          `FUNCT_SRL_SRA: alu_op = funct7[5] ? `ALU_SRA : `ALU_SRL;
+          default: alu_op = 4'bx;
+        endcase
+      end
+      else if (funct7 == `FUNCT_MULDIV) begin
+        mult_opr1 = rs1_q;
+        mult_opr2 = rs2_q;
+        case (funct3)
+          `FUNCT_MUL: mult_op = `MULT_SS;
+          `FUNCT_MULH: mult_op = `MULT_SS;
+          `FUNCT_MULHSU: mult_op = `MULT_SU;
+          `FUNCT_MULHU: mult_op = `MULT_UU;
+        endcase
+      end
+    end
+    else if (opcode == `OPC_JAL) begin
+      pc_adder_base = pc;
+      pc_adder_offset = imm;
+      alu_opr1 = pc;
+      alu_opr2 = 32'h4;
+      alu_op = `ALU_ADD;
+    end
+    else if (opcode == `OPC_JALR) begin
+      pc_adder_base = rs1_q;
+      pc_adder_offset = imm;
+      alu_opr1 = pc;
+      alu_opr2 = 32'h4;
+      alu_op = `ALU_ADD;
+    end
+    else if (opcode == `OPC_BRANCH) begin
+      pc_adder_base = pc;
+      pc_adder_offset = imm;
+      alu_opr1 = rs1_q;
+      alu_opr2 = rs2_q;
+      case (funct3)
+        `FUNCT_BEQ: alu_op = `ALU_CMPEQ;
+        `FUNCT_BNE: alu_op = `ALU_CMPEQ;
+        `FUNCT_BLT: alu_op = `ALU_CMPLT;
+        `FUNCT_BLTU: alu_op = `ALU_CMPLTU;
+        `FUNCT_BGE: alu_op = `ALU_CMPLT;
+        `FUNCT_BGEU: alu_op = `ALU_CMPLTU;
+        default: alu_op = 4'bx;
+      endcase
+    end
+    else if (opcode == `OPC_LOAD || opcode == `OPC_STORE || opcode == `OPC_MISC_MEM) begin
+      alu_opr1 = rs1_q;
+      alu_opr2 = imm;
+      alu_op = `ALU_ADD;
+    end
+  end
+
+  reg [31:0] dmem_q_ext;
+
+  always @(*) begin
+    case (funct3)
+      `FUNCT_LB:
+        case (alu_out[1:0])
+          0: dmem_q_ext = {{24{dmem_q[7]}}, dmem_q[7:0]};
+          1: dmem_q_ext = {{24{dmem_q[15]}}, dmem_q[15:8]};
+          2: dmem_q_ext = {{24{dmem_q[23]}}, dmem_q[23:16]};
+          3: dmem_q_ext = {{24{dmem_q[31]}}, dmem_q[31:24]};
+        endcase
+      `FUNCT_LH:
+        case (alu_out[1])
+          0: dmem_q_ext = {{16{dmem_q[15]}}, dmem_q[15:0]};
+          1: dmem_q_ext = {{16{dmem_q[31]}}, dmem_q[31:16]};
+        endcase
+      `FUNCT_LW:
+        dmem_q_ext = dmem_q;
+      `FUNCT_LBU:
+        case (alu_out[1:0])
+          0: dmem_q_ext = {24'b0, dmem_q[7:0]};
+          1: dmem_q_ext = {24'b0, dmem_q[15:8]};
+          2: dmem_q_ext = {24'b0, dmem_q[23:16]};
+          3: dmem_q_ext = {24'b0, dmem_q[31:24]};
+        endcase
+      `FUNCT_LHU:
+        case (alu_out[1])
+          0: dmem_q_ext = {16'b0, dmem_q[15:0]};
+          1: dmem_q_ext = {16'b0, dmem_q[31:16]};
+        endcase
+      default:
+        dmem_q_ext = 32'bx;
+    endcase
+  end
+
+  // --- state machine
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state <= `STATE_IF;
-      pc <= 0;
-      for (i=0; i<32; i++)
-        regs[i] <= 0;
+      pc <= 32'b0;
     end
     else begin
       if (state == `STATE_IF) begin
@@ -137,108 +303,30 @@ module rvcpu(
       end
       else if (state == `STATE_EXEC) begin
         state <= is_mem_stage_required ? `STATE_MEM : `STATE_IF;
-        pc <= pc + 4;
-        if (opcode == `OPC_OP_IMM)
-          case (funct3)
-            `FUNCT_ADDI: regs[rd] <= rs1_q + imm;
-            `FUNCT_SLTI: regs[rd] <= rs1_q < imm;
-            `FUNCT_SLTIU: regs[rd] <= $unsigned(rs1_q) < $unsigned(imm);
-            `FUNCT_ANDI: regs[rd] <= rs1_q & imm;
-            `FUNCT_ORI: regs[rd] <= rs1_q | imm;
-            `FUNCT_XORI: regs[rd] <= rs1_q ^ imm;
-            `FUNCT_SLLI: regs[rd] <= rs1_q << shamt;
-            `FUNCT_SRLI_SRAI:
-              if (!imm[10]) regs[rd] <= rs1_q >> shamt;
-              else regs[rd] <= rs1_q >>> shamt;
-          endcase
-        else if (opcode == `OPC_LUI)
-          regs[rd] <= imm;
-        else if (opcode == `OPC_AUIPC)
-          regs[rd] <= pc_rel;
-        else if (opcode == `OPC_OP)
-          case (funct3)
-            `FUNCT_ADD_SUB:
-              if (!funct7[5]) regs[rd] <= rs1_q + rs2_q;
-              else regs[rd] <= rs1_q - rs2_q;
-            `FUNCT_SLT: regs[rd] <= rs1_q < rs2_q;
-            `FUNCT_SLTU: regs[rd] <= $unsigned(rs1_q) < $unsigned(rs2_q);
-            `FUNCT_AND: regs[rd] <= rs1_q & rs2_q;
-            `FUNCT_OR: regs[rd] <= rs1_q | rs2_q;
-            `FUNCT_XOR: regs[rd] <= rs1_q ^ rs2_q;
-            `FUNCT_SLL: regs[rd] <= rs1_q << rs2_q[4:0];
-            `FUNCT_SRL_SRA:
-              if (!funct7[5]) regs[rd] <= rs1_q >> rs2_q[4:0];
-              else regs[rd] <= rs1_q >>> rs2_q[4:0];
-          endcase
-        else if (opcode == `OPC_JAL) begin
-          regs[rd] <= pc + 4;
-          pc <= pc_rel;
+        if (opcode == `OPC_OP_IMM || opcode == `OPC_LUI || opcode == `OPC_AUIPC
+          || opcode == `OPC_OP || opcode == `OPC_JAL || opcode == `OPC_JALR) begin
+          pc <= pc_next;
+          regs[rd] <= (opcode == `OPC_OP && funct7 == `FUNCT_MULDIV) ? mult_out : alu_out;
         end
-        else if (opcode == `OPC_JALR) begin
-          regs[rd] <= pc + 4;
-          pc <= {rs1_rel[31:1], 1'b0};
+        else if (opcode == `OPC_BRANCH) begin
+          pc <= alu_out ? pc_adder_out : pc_next;
         end
-        else if (opcode == `OPC_BRANCH)
-          case (funct3)
-            `FUNCT_BEQ: if (rs1_q == rs2_q) pc <= pc_rel;
-            `FUNCT_BNE: if (rs1_q != rs2_q) pc <= pc_rel;
-            `FUNCT_BLT: if (rs1_q < rs2_q) pc <= pc_rel;
-            `FUNCT_BLTU: if ($unsigned(rs1_q) < $unsigned(rs2_q)) pc <= pc_rel;
-            `FUNCT_BGE: if (rs1_q >= rs2_q) pc <= pc_rel;
-            `FUNCT_BGEU: if ($unsigned(rs1_q) >= $unsigned(rs2_q)) pc <= pc_rel;
-          endcase
-        else if (opcode == `OPC_LOAD || opcode == `OPC_STORE || opcode == `OPC_MISC_MEM)
-          regs[0] <= 0;  // pass
-        else
+        else if (opcode == `OPC_LOAD || opcode == `OPC_STORE || opcode == `OPC_MISC_MEM) begin
+          pc <= pc_next;
+        end
+        else begin
           state <= `STATE_HALT;  // unimplemented instruction
+        end
       end
       else if (state == `STATE_MEM) begin
         state <= `STATE_IF;
         if (opcode == `OPC_LOAD)
-          case (funct3)
-            `FUNCT_LB:
-              case (rs1_rel[1:0])
-                0: regs[rd] <= {{24{dmem_q[7]}}, dmem_q[7:0]};
-                1: regs[rd] <= {{24{dmem_q[15]}}, dmem_q[15:8]};
-                2: regs[rd] <= {{24{dmem_q[23]}}, dmem_q[23:16]};
-                3: regs[rd] <= {{24{dmem_q[31]}}, dmem_q[31:24]};
-              endcase
-            `FUNCT_LH:
-              case (rs1_rel[1])
-                0: regs[rd] <= {{16{dmem_q[15]}}, dmem_q[15:0]};
-                1: regs[rd] <= {{16{dmem_q[31]}}, dmem_q[31:16]};
-              endcase
-            `FUNCT_LW:
-              regs[rd] <= dmem_q;
-            `FUNCT_LBU:
-              case (rs1_rel[1:0])
-                0: regs[rd] <= {24'b0, dmem_q[7:0]};
-                1: regs[rd] <= {24'b0, dmem_q[15:8]};
-                2: regs[rd] <= {24'b0, dmem_q[23:16]};
-                3: regs[rd] <= {24'b0, dmem_q[31:24]};
-              endcase
-            `FUNCT_LHU:
-              case (rs1_rel[1])
-                0: regs[rd] <= {16'b0, dmem_q[15:0]};
-                1: regs[rd] <= {16'b0, dmem_q[31:16]};
-              endcase
-          endcase
+          regs[rd] <= dmem_q_ext;
       end
-      else
+      else begin
         state <= `STATE_HALT;
+      end
     end
   end
 endmodule
 
-module rvcpu_top(
-  input clk,
-  input rst_n,
-  output halted
-);
-  wire [31:0] imem_addr, imem_q, dmem_addr, dmem_d, dmem_q;
-  wire [3:0] dmem_we;
-
-  imem imem0(clk, imem_addr, imem_q);
-  dmem dmem0(clk, dmem_addr, dmem_d, dmem_we, dmem_q);
-  rvcpu cpu0(clk, rst_n, imem_addr, imem_q, dmem_addr, dmem_d, dmem_we, dmem_q, halted);
-endmodule
