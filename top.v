@@ -41,7 +41,7 @@ module dmem(
   end
 endmodule
 
-module rvcpu_top(
+module top(
   input clk,
   input rst_n,
   output halted

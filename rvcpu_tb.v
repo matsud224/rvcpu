@@ -6,7 +6,7 @@ module rvcpu_tb;
   reg clk, rst_n;
   wire halted;
 
-  rvcpu_top top(clk, rst_n, halted);
+  top top(clk, rst_n, halted);
 
   initial begin
     clk = 1;
