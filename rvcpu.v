@@ -217,6 +217,7 @@ module rvcpu(
           `FUNCT_MULH: mult_op = `MULT_SS;
           `FUNCT_MULHSU: mult_op = `MULT_SU;
           `FUNCT_MULHU: mult_op = `MULT_UU;
+          default: mult_op = 2'bx;
         endcase
       end
     end
