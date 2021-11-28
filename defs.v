@@ -53,6 +53,3 @@
 
 `define FUNCT_ECALL   12'b0
 `define FUNCT_EBREAK  12'b1
-
-`define FUNCT_INTEGER 7'b0
-`define FUNCT_MULDIV  7'b1

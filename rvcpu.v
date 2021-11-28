@@ -74,8 +74,8 @@ module rvcpu(
   assign halted = (state == `STATE_HALT);
 
   reg [31:0] regs[0:31];
-  wire [31:0] rs1_q = (rs1 == 0) ? 32'b0 : regs[rs1];
-  wire [31:0] rs2_q = (rs2 == 0) ? 32'b0 : regs[rs2];
+  wire signed [31:0] rs1_q = (rs1 == 0) ? 32'b0 : regs[rs1];
+  wire signed [31:0] rs2_q = (rs2 == 0) ? 32'b0 : regs[rs2];
 
   reg [31:0] pc;
   wire [31:0] pc_next = pc + 32'h4;
@@ -191,7 +191,7 @@ module rvcpu(
       alu_op = `ALU_ADD;
     end
     else if (opcode == `OPC_OP) begin
-      if (funct7 == `FUNCT_INTEGER) begin
+      if (funct7[0] == 1'b0) begin
         alu_opr1 = rs1_q;
         alu_opr2 = rs2_q;
         case (funct3)
@@ -209,7 +209,7 @@ module rvcpu(
           default: alu_op = 4'bx;
         endcase
       end
-      else if (funct7 == `FUNCT_MULDIV) begin
+      else begin
         mult_opr1 = rs1_q;
         mult_opr2 = rs2_q;
         case (funct3)
@@ -308,7 +308,7 @@ module rvcpu(
           || opcode == `OPC_OP || opcode == `OPC_JAL || opcode == `OPC_JALR) begin
 
           pc <= (opcode == `OPC_JAL || opcode == `OPC_JALR) ? pc_adder_out : pc_next;
-          regs[rd] <= (opcode == `OPC_OP && funct7 == `FUNCT_MULDIV) ? mult_out : alu_out;
+          regs[rd] <= (opcode == `OPC_OP && funct7[0]) ? mult_out : alu_out;
         end
         else if (opcode == `OPC_BRANCH) begin
           pc <= alu_out ? pc_adder_out : pc_next;
