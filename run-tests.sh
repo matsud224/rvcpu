@@ -12,7 +12,7 @@ rm tests-tmp/*.dump
 
 for test in $(ls ./tests-tmp);
 do
-  echo -n Testing$test ...
+  echo -n Testing $test ...
   TESTELF=tests-tmp/$test
   riscv32-unknown-elf-objcopy -O binary $TESTELF $TESTELF.bin
   hexdump -v -e '/4 "%08x\n"' $TESTELF.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{(i*4).to_s(16)} #{line}"}' > rom.txt

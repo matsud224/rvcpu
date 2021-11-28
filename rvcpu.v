@@ -112,14 +112,14 @@ module rvcpu(
   reg signed [31:0] mult_opr1;
   reg signed [31:0] mult_opr2;
   reg signed [63:0] mult_out0;
-  wire mult_hi = (funct3 == 3'b0);
+  wire mult_hi = (funct3 != 3'b0);
   wire signed [63:0] mult_out = mult_hi ? mult_out0[63:32] : mult_out0[31:0];
 
   always @(*) begin
     case (mult_op)
       `MULT_SS: mult_out0 = mult_opr1 * mult_opr2;
       `MULT_UU: mult_out0 = $unsigned(mult_opr1) * $unsigned(mult_opr2);
-      `MULT_SU: mult_out0 = mult_opr1 * {1'b0, mult_opr2};
+      `MULT_SU: mult_out0 = mult_opr1 * $signed({1'b0, mult_opr2});
       default:  mult_out0 = 64'bx;
     endcase
   end
@@ -305,7 +305,8 @@ module rvcpu(
         state <= is_mem_stage_required ? `STATE_MEM : `STATE_IF;
         if (opcode == `OPC_OP_IMM || opcode == `OPC_LUI || opcode == `OPC_AUIPC
           || opcode == `OPC_OP || opcode == `OPC_JAL || opcode == `OPC_JALR) begin
-          pc <= pc_next;
+
+          pc <= (opcode == `OPC_JAL || opcode == `OPC_JALR) ? pc_adder_out : pc_next;
           regs[rd] <= (opcode == `OPC_OP && funct7 == `FUNCT_MULDIV) ? mult_out : alu_out;
         end
         else if (opcode == `OPC_BRANCH) begin
@@ -314,8 +315,8 @@ module rvcpu(
         else if (opcode == `OPC_LOAD || opcode == `OPC_STORE || opcode == `OPC_MISC_MEM) begin
           pc <= pc_next;
         end
-        else begin
-          state <= `STATE_HALT;  // unimplemented instruction
+        else if (opcode == `OPC_SYSTEM) begin
+          state <= `STATE_HALT;
         end
       end
       else if (state == `STATE_MEM) begin
