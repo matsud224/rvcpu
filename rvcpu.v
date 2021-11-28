@@ -1,15 +1,5 @@
 `include "defs.v"
 
-module divider(
-  input clk,
-  input rst_n,
-  input [31:0] opr_1,
-  input [31:0] opr_2,
-  output [31:0] out
-);
-
-endmodule
-
 module rvcpu(
   input clk,
   input rst_n,
