@@ -2,6 +2,6 @@
 
 .global _start
 _start:
-  lui sp, 0x8000
+  lui sp, 0x808
   call main
   j .
