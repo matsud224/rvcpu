@@ -17,8 +17,8 @@ TESTELF=tests-tmp/$TEST
 
 riscv32-unknown-elf-objcopy -O binary -j .text.init -j .tohost -j .text $TESTELF $TESTELF.text.bin
 riscv32-unknown-elf-objcopy -O binary -j .data -j .bss --set-section-flags=.bss=alloc,load,contents $TESTELF $TESTELF.data.bin
-hexdump -v -e '/4 "%08x\n"' $TESTELF.text.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{(i*4).to_s(16)} #{line}"}' > imem.txt
-hexdump -v -e '/4 "%08x\n"' $TESTELF.data.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{(i*4).to_s(16)} #{line}"}' > dmem.txt
+hexdump -v -e '/4 "%08x\n"' $TESTELF.text.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{i.to_s(16)} #{line}"}' > imem.txt
+hexdump -v -e '/4 "%08x\n"' $TESTELF.data.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{i.to_s(16)} #{line}"}' > dmem.txt
 
 iverilog -o rvcpu_tb -s rvcpu_tb top.v rvcpu_tb.v rvcpu.v
 if vvp ./rvcpu_tb | grep "failed!"; then
