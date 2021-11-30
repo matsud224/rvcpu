@@ -11,8 +11,7 @@ module imem(
 
   initial begin
     $readmemh("imem.txt", rom);
-  end
-endmodule
+  end endmodule
 
 module dmem(
   input clk,
@@ -50,8 +49,7 @@ endmodule
 
 module top(
   input clk,
-  input rst_n,
-  output halted
+  input rst_n
 );
   wire [31:0] imem_addr, imem_q, dmem_addr, dmem_d, dmem_q;
   wire [3:0] dmem_we;
@@ -59,5 +57,5 @@ module top(
 
   imem imem0(clk, imem_addr, imem_q);
   dmem dmem0(clk, dmem_en, dmem_addr, dmem_d, dmem_we, dmem_q);
-  rvcpu cpu0(clk, rst_n, imem_addr, imem_q, dmem_en, dmem_addr, dmem_d, dmem_we, dmem_q, halted);
+  rvcpu cpu0(clk, rst_n, imem_addr, imem_q, dmem_en, dmem_addr, dmem_d, dmem_we, dmem_q);
 endmodule

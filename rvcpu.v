@@ -9,8 +9,7 @@ module rvcpu(
   output [31:0] dmem_addr,
   output [31:0] dmem_d,
   output [3:0] dmem_we,
-  input [31:0] dmem_q,
-  output halted
+  input [31:0] dmem_q
 );
   `define ALU_ADD 0
   `define ALU_AND 1
@@ -61,7 +60,6 @@ module rvcpu(
   end
 
   reg [1:0] state;
-  assign halted = (state == `STATE_HALT);
 
   reg [31:0] regs[0:31];
   wire signed [31:0] rs1_q = (rs1 == 0) ? 32'b0 : regs[rs1];

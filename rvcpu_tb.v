@@ -4,9 +4,8 @@ module rvcpu_tb;
   parameter TCLK_HALF = 5;
 
   reg clk, rst_n;
-  wire halted;
 
-  top top(clk, rst_n, halted);
+  top top(clk, rst_n);
 
   initial begin
     clk = 1;
@@ -24,7 +23,7 @@ module rvcpu_tb;
     rst_n = 0;
     #(20)
     rst_n = 1;
-    wait(halted);
+    wait(top.cpu0.state == 3/*halted*/);
     if (top.cpu0.regs[10] !== 0) begin
       // check x10 for riscv-tests
       $display("failed!");
