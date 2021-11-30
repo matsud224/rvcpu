@@ -3,7 +3,9 @@ module imem(
   input [31:0] addr,
   output reg [31:0] q
 );
-  reg [31:0] rom[0:8192-1];
+  parameter DEPTH = 8192;
+
+  reg [31:0] rom[0:DEPTH-1];
 
   always @(posedge clk) begin
     q <= rom[addr[31:2]];
@@ -21,12 +23,14 @@ module dmem(
   input [3:0] we,
   output reg [31:0] q
 );
-  reg [31:0] ram[0:8192-1];
+  parameter DEPTH = 8192;
+
+  reg [31:0] ram[0:DEPTH-1];
 
   reg [7:0] d0, d1, d2, d3;
 
-  wire is_dmem_addr = (addr[31:23] == 9'b1) && (addr[22:15] == 8'b0);
-  wire [12:0] paddr = addr[14:2];
+  wire is_dmem_addr = (addr[31:23] == 9'b1);
+  wire [12:0] paddr = addr[31:2];
 
   always @(*) begin
     d0 = we[0] ? d[7:0] : ram[paddr][7:0];
