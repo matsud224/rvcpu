@@ -14,9 +14,9 @@ hexdump -v -e '/4 "%08x\n"' $SRC.text.bin | ruby -e 'ARGF.map.with_index{|line, 
 hexdump -v -e '/4 "%08x\n"' $SRC.data.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{(i*4).to_s(16)} #{line}"}' > dmem.txt
 
 printf "DEPTH = 8192;\nWIDTH = 32;\n\nADDRESS_RADIX = HEX;\nDATA_RADIX = HEX;\n\nCONTENT\nBEGIN\n" > imem.mif
-hexdump -v -e '/4 "%08x\n"' $SRC.text.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "#{(i*4).to_s(16)}: #{line.scan(/.{1,2}/).reverse.join(" ")};"}' >> imem.mif
+hexdump -v -e '/4 "%08x\n"' $SRC.text.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "#{i.to_s(16)}: #{line.scan(/.{1,2}/).reverse.join(" ")};"}' >> imem.mif
 printf "END;\n" >> imem.mif
 
 printf "DEPTH = 8192;\nWIDTH = 32;\n\nADDRESS_RADIX = HEX;\nDATA_RADIX = HEX;\n\nCONTENT\nBEGIN\n" > dmem.mif
-hexdump -v -e '/4 "%08x\n"' $SRC.data.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "#{(i*4).to_s(16)}: #{line.scan(/.{1,2}/).reverse.join(" ")};"}' >> dmem.mif
+hexdump -v -e '/4 "%08x\n"' $SRC.data.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "#{i.to_s(16)}: #{line.scan(/.{1,2}/).reverse.join(" ")};"}' >> dmem.mif
 printf "END;\n" >> dmem.mif
