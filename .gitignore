@@ -8,3 +8,9 @@ rvcpu_tb.vcd
 *.elf
 *.mif
 *.log
+*.bit
+*.area
+*.timing
+*.bid
+*.db
+*.tsm
