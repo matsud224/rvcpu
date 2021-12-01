@@ -67,11 +67,8 @@ module top(
 
   rom0 rom0(imem_q, rom0_addr, clk, rst);
   ram0 ram0(ram0_q, dmem_d, ram0_addr, ram0_en, clk, dmem_we);
-  wire [2:0] dummy;
-  led_ctrl ledctrl(clk, rst_n, ledctrl_en, dmem_d, dmem_we, ledctrl_q, dummy);
+  led_ctrl ledctrl(clk, rst_n, ledctrl_en, dmem_d, dmem_we, ledctrl_q, rgb_led);
 
-  wire [31:0] cpu_pc;
-  assign rgb_led = cpu_pc == 32'h8 ? 3'b101 : 3'b110;
-  rvcpu cpu0(clk, rst_n, imem_addr, imem_q, dmem_en, dmem_addr, dmem_d, dmem_we, dmem_q, cpu_pc);
+  rvcpu cpu0(clk, rst_n, imem_addr, imem_q, dmem_en, dmem_addr, dmem_d, dmem_we, dmem_q);
 
 endmodule

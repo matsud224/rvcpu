@@ -1,8 +1,13 @@
+int fib(int n) {
+  if (n <= 1) return 1; else return fib(n-2) + fib(n-1);
+}
+
 void main() {
-  volatile unsigned int *ram = (volatile unsigned int *)0x804000;
   volatile unsigned int *led = (volatile unsigned int *)0x1000000;
-  ram[0] = 0x12345678;
-  ram[1] = 0xff00ff00;
-  ram[2] = 0x00ff00ff;
-  *led = 1;
+  *led = 0;
+  while (1) {
+    for (int i=0; i<2400000; i++);
+    int prev = *led;
+    *led = prev==8 ? 0 : prev+1;
+  }
 }

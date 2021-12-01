@@ -13,7 +13,8 @@ module imem(
 
   initial begin
     $readmemh("imem.txt", rom);
-  end endmodule
+  end
+endmodule
 
 module dmem(
   input clk,
