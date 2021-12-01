@@ -1,7 +1,3 @@
-int fib(int n) {
-  if (n <= 1) return 1; else return fib(n-2) + fib(n-1);
-}
-
 void main() {
   volatile unsigned int *led = (volatile unsigned int *)0x1000000;
   *led = 0;
