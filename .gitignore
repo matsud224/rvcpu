@@ -15,4 +15,5 @@ rvcpu_tb.vcd
 *.db
 *.tsm
 *.rpt
+*.cfg
 .tmp*
