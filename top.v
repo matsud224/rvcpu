@@ -1,13 +1,15 @@
 module imem(
   input clk,
   input [31:0] addr,
-  output [31:0] q
+  output reg [31:0] q
 );
   parameter DEPTH = 8192;
 
   reg [31:0] rom[0:DEPTH-1];
 
-  assign q = rom[addr[31:2]];
+  always @(posedge clk) begin
+    q <= rom[addr[31:2]];
+  end
 
   initial begin
     $readmemh("imem.txt", rom);
