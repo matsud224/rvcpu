@@ -32,7 +32,7 @@ module rvcpu(
   `define STATE_HALT  2'h3
 
   // --- decoder
-  wire [31:0] inst = imem_q;
+  reg [31:0] inst;
   wire [6:0] opcode = inst[6:0];
   wire [4:0] rd = inst[11:7];
   wire [2:0] funct3 = inst[14:12];
@@ -289,6 +289,7 @@ module rvcpu(
     else begin
       if (state == `STATE_IF) begin
         state <= `STATE_EXEC;
+        inst <= imem_q;
       end
       else if (state == `STATE_EXEC) begin
         state <= is_mem_stage_required ? `STATE_MEM : `STATE_IF;
