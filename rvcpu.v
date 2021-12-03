@@ -298,26 +298,26 @@ module rvcpu(
       else if (state == `STATE_EXEC) begin
         state <= is_mem_stage_required ? `STATE_MEM : `STATE_IF;
         if (opcode == `OPC_OP_IMM || opcode == `OPC_LUI || opcode == `OPC_AUIPC
-          || opcode == `OPC_OP || opcode == `OPC_JAL || opcode == `OPC_JALR) begin
+          || opcode == `OPC_OP || opcode == `OPC_JAL || opcode == `OPC_JALR || opcode == `OPC_SYSTEM) begin
 
           pc <= (opcode == `OPC_JAL || opcode == `OPC_JALR) ? pc_adder_out : pc_next;
+
           regs[rd] <= (opcode == `OPC_OP && funct7[0]) ? mult_out : alu_out;
+          if (opcode == `OPC_SYSTEM && funct3 == `FUNCT_CSRRS && rs1 == 0) begin
+            case (imm[11:0])
+              `CSR_CYCLE: regs[rd] <= cycle[31:0];
+              `CSR_CYCLEH: regs[rd] <= cycle[63:32];
+            endcase
+          end
+
+          if (opcode == `OPC_SYSTEM && funct3 == `FUNCT_PRIV)
+            state <= `STATE_HALT;
         end
         else if (opcode == `OPC_BRANCH) begin
           pc <= alu_out ? pc_adder_out : pc_next;
         end
         else if (opcode == `OPC_MISC_MEM) begin
           pc <= pc_next;
-        end
-        else if (opcode == `OPC_SYSTEM) begin
-          if (funct3 == `FUNCT_CSRRS && rs1 == 0) begin
-            case (imm[11:0])
-              `CSR_CYCLE: regs[rd] <= cycle[31:0];
-              `CSR_CYCLEH: regs[rd] <= cycle[63:32];
-            endcase
-          end
-          if (funct3 == `FUNCT_PRIV)
-            state <= `STATE_HALT;
         end
       end
       else if (state == `STATE_MEM) begin
