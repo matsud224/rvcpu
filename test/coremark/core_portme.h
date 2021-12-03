@@ -206,7 +206,7 @@ void portable_fini(core_portable *p);
 #endif
 #endif
 
-#define ITERATIONS 10
+#define ITERATIONS 2000
 
 int ee_printf(const char *fmt, ...);
 

@@ -660,13 +660,21 @@ ee_vsprintf(char *buf, const char *fmt, va_list args)
 }
 
 void
-uart_send_char(char c)
+_uart_send_char(char c)
 {
   volatile unsigned int *uart_ctrl = (volatile unsigned int *)0x1800000;
   volatile unsigned int *uart_txdata = (volatile unsigned int *)0x1800008;
   while (!(*uart_ctrl & 0x4));
   *uart_txdata = c;
   *uart_ctrl = *uart_ctrl | 0x8;
+}
+
+void
+uart_send_char(char c)
+{
+  if (c == '\n')
+    _uart_send_char('\r');
+  _uart_send_char(c);
 }
 
 int

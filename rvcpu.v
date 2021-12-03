@@ -302,13 +302,14 @@ module rvcpu(
 
           pc <= (opcode == `OPC_JAL || opcode == `OPC_JALR) ? pc_adder_out : pc_next;
 
-          regs[rd] <= (opcode == `OPC_OP && funct7[0]) ? mult_out : alu_out;
           if (opcode == `OPC_SYSTEM && funct3 == `FUNCT_CSRRS && rs1 == 0) begin
             case (imm[11:0])
               `CSR_CYCLE: regs[rd] <= cycle[31:0];
               `CSR_CYCLEH: regs[rd] <= cycle[63:32];
             endcase
           end
+          else
+            regs[rd] <= (opcode == `OPC_OP && funct7[0]) ? mult_out : alu_out;
 
           if (opcode == `OPC_SYSTEM && funct3 == `FUNCT_PRIV)
             state <= `STATE_HALT;

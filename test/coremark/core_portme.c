@@ -41,7 +41,7 @@ volatile ee_s32 seed5_volatile = 0;
    cpu clock cycles performance counter etc. Sample implementation for standard
    time.h and windows.h definitions included.
 */
-#define TIMER_RES_DIVIDE_BITS          4
+#define TIMER_RES_DIVIDE_BITS          0
 CORETIMETYPE
 barebones_clock()
 {

@@ -8,7 +8,7 @@ SRCS="$CM/core_list_join.c $CM/core_main.c $CM/core_matrix.c $CM/core_state.c $C
 
 riscv32-unknown-elf-gcc $CFLAGS -o coremark.elf $SRCS start.s
 riscv32-unknown-elf-objcopy -O binary --wildcard -j .text.init -j .text -j .text.* coremark.elf coremark.text.bin
-riscv32-unknown-elf-objcopy -O binary --wildcard -j .rodata -j .rodata.* -j .data -j .data.* -j .bss -j .bss.* --set-section-flags=.bss=alloc,load,contents coremark.elf coremark.data.bin
+riscv32-unknown-elf-objcopy -O binary --wildcard -j .rodata -j .rodata.* -j .data -j .data.* -j .bss -j .bss.* -j .sdata -j .sbss --set-section-flags=.bss=alloc,load,contents coremark.elf coremark.data.bin
 
 hexdump -v -e '/4 "%08x\n"' coremark.text.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{i.to_s(16)} #{line}"}' > imem.txt
 hexdump -v -e '/4 "%08x\n"' coremark.data.bin | ruby -e 'ARGF.map.with_index{|line, i| puts "@#{i.to_s(16)} #{line}"}' > dmem.txt
