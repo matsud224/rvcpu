@@ -311,7 +311,7 @@ module rvcpu(
         end
         else if (opcode == `OPC_SYSTEM) begin
           if (funct3 == `FUNCT_CSRRS && rs1 == 0) begin
-            case (funct12)
+            case (imm[11:0])
               `CSR_CYCLE: regs[rd] <= cycle[31:0];
               `CSR_CYCLEH: regs[rd] <= cycle[63:32];
             endcase
