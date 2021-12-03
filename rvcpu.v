@@ -65,6 +65,8 @@ module rvcpu(
   wire signed [31:0] rs1_q = (rs1 == 0) ? 32'b0 : regs[rs1];
   wire signed [31:0] rs2_q = (rs2 == 0) ? 32'b0 : regs[rs2];
 
+  reg [63:0] cycle;
+
   reg [31:0] pc;
   wire [31:0] pc_next = pc + 32'h4;
   reg signed [31:0] pc_adder_base;
@@ -285,8 +287,11 @@ module rvcpu(
     if (!rst_n) begin
       state <= `STATE_IF;
       pc <= 32'b0;
+      cycle <= 64'b0;
     end
     else begin
+      cycle <= cycle + 64'b1;
+
       if (state == `STATE_IF) begin
         state <= `STATE_EXEC;
       end
@@ -305,7 +310,14 @@ module rvcpu(
           pc <= pc_next;
         end
         else if (opcode == `OPC_SYSTEM) begin
-          state <= `STATE_HALT;
+          if (funct3 == `FUNCT_CSRRS && rs1 == 0) begin
+            case (funct12)
+              `CSR_CYCLE: regs[rd] <= cycle[31:0];
+              `CSR_CYCLEH: regs[rd] <= cycle[63:32];
+            endcase
+          end
+          if (funct3 == `FUNCT_PRIV)
+            state <= `STATE_HALT;
         end
       end
       else if (state == `STATE_MEM) begin

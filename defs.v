@@ -19,8 +19,7 @@
 `define FUNCT_SLLI   3'b001
 `define FUNCT_SRLI_SRAI  3'b101
 `define FUNCT_ADD_SUB    3'b000
-`define FUNCT_SLT    3'b010
-`define FUNCT_SLTU   3'b011
+`define FUNCT_SLT    3'b010 `define FUNCT_SLTU   3'b011
 `define FUNCT_AND    3'b111
 `define FUNCT_OR     3'b110
 `define FUNCT_XOR    3'b100
@@ -50,6 +49,10 @@
 `define FUNCT_DIVU   3'b101
 `define FUNCT_REM    3'b110
 `define FUNCT_REMU   3'b111
+`define FUNCT_CSRRS  3'b010
 
 `define FUNCT_ECALL   12'b0
 `define FUNCT_EBREAK  12'b1
+
+`define CSR_CYCLE     12'hc00
+`define CSR_CYCLEH    12'hc80
