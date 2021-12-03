@@ -19,7 +19,8 @@
 `define FUNCT_SLLI   3'b001
 `define FUNCT_SRLI_SRAI  3'b101
 `define FUNCT_ADD_SUB    3'b000
-`define FUNCT_SLT    3'b010 `define FUNCT_SLTU   3'b011
+`define FUNCT_SLT    3'b010
+`define FUNCT_SLTU   3'b011
 `define FUNCT_AND    3'b111
 `define FUNCT_OR     3'b110
 `define FUNCT_XOR    3'b100
